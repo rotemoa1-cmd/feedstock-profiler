@@ -42,6 +42,41 @@ st.set_page_config(
 )
 
 # ---------------------------------------------------------------------------
+# Password gate
+# ---------------------------------------------------------------------------
+# Reads the expected password from Streamlit Cloud Secrets (set under
+# Manage app → Settings → Secrets as `profiler_password = "..."`). If no
+# secret is configured the app is effectively locked — set the secret
+# before deploying.
+def _check_password() -> bool:
+    if st.session_state.get("_password_correct"):
+        return True
+    try:
+        expected = st.secrets["profiler_password"]
+    except (KeyError, FileNotFoundError, Exception):
+        expected = ""
+
+    def _on_submit():
+        if st.session_state.get("_password_input") == expected and expected:
+            st.session_state["_password_correct"] = True
+            st.session_state.pop("_password_input", None)
+        else:
+            st.session_state["_password_correct"] = False
+
+    st.text_input(
+        "Password",
+        type="password",
+        key="_password_input",
+        on_change=_on_submit,
+    )
+    if st.session_state.get("_password_correct") is False:
+        st.error("Incorrect password")
+    return False
+
+if not _check_password():
+    st.stop()
+
+# ---------------------------------------------------------------------------
 # Session state initialization
 # ---------------------------------------------------------------------------
 STEPS = [
